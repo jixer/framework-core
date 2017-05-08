@@ -20,7 +20,7 @@ namespace jixer.Framework.Core
         {
             _funcs = new Dictionary<Type, Func<object, object, bool>>();
             _areEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethods("AreEqual").Where(x => !x.IsPublic).Single();
-            _areArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethod("AreArraysEqual");
+            _areArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethods("AreArraysEqual").Where(x => !x.IsPublic).Single();
         }
         #endregion
 
@@ -67,7 +67,20 @@ namespace jixer.Framework.Core
         {
             return AreEqual(typeof(T), t1, t2);
         }
-        
+
+        /// <summary>
+        /// Compare two instances of an array with the same type for equality
+        /// </summary>
+        /// <typeparam name="T">Type of objects</typeparam>
+        /// <param name="t1">Left instance to compare</param>
+        /// <param name="t2">Right instance to compare</param>
+        /// <returns>True if the objects are the same</returns>
+        public static bool AreArraysEqual<T>(T t1, T t2) where T : IEnumerable
+        {
+            var arg = typeof(T).IsArray ? typeof(T).GetElementType() : typeof(T).GetTypeInfo().GenericTypeArguments[0];
+            return AreArraysEqual(arg, t1, t2);
+        }
+
         #endregion
 
         #region Private Methods
@@ -164,6 +177,18 @@ namespace jixer.Framework.Core
             return func.Invoke(t1, t2);
         }
 
+        /// <summary>
+        /// Compare two instances of an array with the same type for equality
+        /// </summary>
+        /// <param name="t">Type of objects</typeparam>
+        /// <param name="t1">Left instance to compare</param>
+        /// <param name="t2">Right instance to compare</param>
+        /// <returns>True if the objects are the same</returns>
+        /// <remarks>
+        /// This was kept as a private since there is no checking to ensure that 't1' and 't2' are of type 't'.
+        /// 
+        /// Only the generic wrapper for this function was implemented as a public
+        /// </remarks>
         protected static bool AreArraysEqual(Type t, IEnumerable t1, IEnumerable t2)
         {
             // initial quick checks

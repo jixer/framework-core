@@ -282,5 +282,66 @@ namespace jixer.Framework.Core.Tests.Unit
             // assert
             actual.Should().BeTrue("Objects contain the same data");
         }
+
+        [Test]
+        public void MemberwiseCompare_returns_true_when_comparing_two_similar_arrays()
+        {
+            // arrange
+            TestClass8[] obj1 = Builder<TestClass8>.CreateListOfSize(10).Build().ToArray();
+            TestClass8[] obj2 = Builder<TestClass8>.CreateListOfSize(10).Build().ToArray();
+
+
+            // act
+            bool actual = MemberwiseCompare.AreArraysEqual(obj1, obj2);
+
+            // assert
+            actual.Should().BeTrue("Objects contain the same data");
+        }
+
+        [Test]
+        public void MemberwiseCompare_returns_true_when_comparing_two_similar_lists()
+        {
+            // arrange
+            IList<TestClass8> obj1 = Builder<TestClass8>.CreateListOfSize(10).Build();
+            IList<TestClass8> obj2 = Builder<TestClass8>.CreateListOfSize(10).Build();
+
+
+            // act
+            bool actual = MemberwiseCompare.AreArraysEqual(obj1, obj2);
+
+            // assert
+            actual.Should().BeTrue("Objects contain the same data");
+        }
+
+        [Test]
+        public void MemberwiseCompare_returns_false_when_comparing_two_different_arrays()
+        {
+            // arrange
+            TestClass8[] obj1 = Builder<TestClass8>.CreateListOfSize(10).Build().ToArray();
+            TestClass8[] obj2 = Builder<TestClass8>.CreateListOfSize(10).Build().ToArray();
+            obj2[9].Prop1 = DateTime.Now.AddMilliseconds(500);
+
+            // act
+            bool actual = MemberwiseCompare.AreArraysEqual(obj1, obj2);
+
+            // assert
+            actual.Should().BeFalse("Objects contain different data");
+        }
+
+        [Test]
+        public void MemberwiseCompare_returns_false_when_comparing_two_different_lists()
+        {
+            // arrange
+            IList<TestClass8> obj1 = Builder<TestClass8>.CreateListOfSize(10).Build();
+            IList<TestClass8> obj2 = Builder<TestClass8>.CreateListOfSize(10).Build();
+            obj2.Last().Prop1 = DateTime.Now.AddMilliseconds(500);
+
+
+            // act
+            bool actual = MemberwiseCompare.AreArraysEqual(obj1, obj2);
+
+            // assert
+            actual.Should().BeFalse("Objects contain different data");
+        }
     }
 }
