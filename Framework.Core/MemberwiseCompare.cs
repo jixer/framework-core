@@ -13,6 +13,8 @@ namespace jixer.Framework.Core
         internal static IDictionary<Type, Func<object, object, bool>> _funcs;
         internal static MethodInfo _areEqualMethodInfo;
         internal static MethodInfo _areArraysEqualMethodInfo;
+        internal static MethodInfo _areValueTypeArraysEqualMethodInfo;
+        internal static MethodInfo _areNonValueTypeArraysEqualMethodInfo;
         #endregion
 
         #region Constructors
@@ -21,6 +23,8 @@ namespace jixer.Framework.Core
             _funcs = new Dictionary<Type, Func<object, object, bool>>();
             _areEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethods("AreEqual").Where(x => !x.IsPublic).Single();
             _areArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethods("AreArraysEqual").Where(x => !x.IsPublic).Single();
+            _areValueTypeArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethod("AreValueTypeArraysEqual");
+            _areNonValueTypeArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethod("AreNonValueTypeArraysEqual");
         }
         #endregion
 
@@ -115,8 +119,13 @@ namespace jixer.Framework.Core
                     var leftArray = Expression.Property(pCastThis, property);
                     var rightArray = Expression.Property(pCastThat, property);
                     var arg = property.PropertyType.IsArray ? property.PropertyType.GetElementType() : property.PropertyType.GetTypeInfo().GenericTypeArguments[0];
-                    
-                    equals = Expression.Call(   _areArraysEqualMethodInfo,
+
+                    MethodInfo _methodToCall =
+                     arg.GetTypeInfo().IsValueType || arg.GetTypeInfo().Name == "String"
+                     ? _areValueTypeArraysEqualMethodInfo
+                     : _areNonValueTypeArraysEqualMethodInfo;
+
+                    equals = Expression.Call(   _methodToCall,
                                                 Expression.Constant(arg),
                                                 Expression.Property(pCastThis, property),
                                                 Expression.Property(pCastThat, property));
@@ -211,6 +220,62 @@ namespace jixer.Framework.Core
                     areEqual = AreEqual(t, t1Enumerator.Current, t2Enumerator.Current);
                 }
 
+                if (!areEqual) return false;
+            }
+
+            // if we got here then the array elements are the same
+            // this last check is to make sure that one array is not larger than the other
+            return t1CanMoveNext == false && t2CanMoveNext == false;
+        }
+
+        /// <summary>
+        /// Compare two instances of an array with the same value type for equality
+        /// </summary>
+        /// <param name="t">Type of objects</typeparam>
+        /// <param name="t1">Left instance to compare</param>
+        /// <param name="t2">Right instance to compare</param>
+        /// <returns>True if the objects are the same</returns>
+        protected static bool AreNonValueTypeArraysEqual(Type t, IEnumerable t1, IEnumerable t2)
+        {
+            // initial quick checks
+            if (t1 == t2) return true; // accounts for nulls
+            if (t1 == null || t2 == null) return false;
+
+            var t1Enumerator = t1.GetEnumerator();
+            var t2Enumerator = t2.GetEnumerator();
+            bool t1CanMoveNext = true;
+            bool t2CanMoveNext = true;
+            while ((t1CanMoveNext = t1Enumerator.MoveNext()) & (t2CanMoveNext = t2Enumerator.MoveNext()))
+            {
+                bool areEqual = AreEqual(t, t1Enumerator.Current, t2Enumerator.Current);
+                if (!areEqual) return false;
+            }
+
+            // if we got here then the array elements are the same
+            // this last check is to make sure that one array is not larger than the other
+            return t1CanMoveNext == false && t2CanMoveNext == false;
+        }
+
+        /// <summary>
+        /// Compare two instances of an array with the same value type for equality
+        /// </summary>
+        /// <param name="t">Type of objects</typeparam>
+        /// <param name="t1">Left instance to compare</param>
+        /// <param name="t2">Right instance to compare</param>
+        /// <returns>True if the objects are the same</returns>
+        protected static bool AreValueTypeArraysEqual(Type t, IEnumerable t1, IEnumerable t2)
+        {
+            // initial quick checks
+            if (t1 == t2) return true; // accounts for nulls
+            if (t1 == null || t2 == null) return false;
+
+            var t1Enumerator = t1.GetEnumerator();
+            var t2Enumerator = t2.GetEnumerator();
+            bool t1CanMoveNext = true;
+            bool t2CanMoveNext = true;
+            while ((t1CanMoveNext = t1Enumerator.MoveNext()) & (t2CanMoveNext = t2Enumerator.MoveNext()))
+            {
+                bool areEqual = t1Enumerator.Current.Equals(t2Enumerator.Current);
                 if (!areEqual) return false;
             }
 
