@@ -62,6 +62,9 @@
     <Compile Include="TestClass\TestClass2.cs" />
     <Compile Include="TestClass\TestClass3.cs" />
     <Compile Include="TestClass\TestClass4.cs" />
+    <Compile Include="TestClass\TestClass8.cs" />
+    <Compile Include="TestClass\TestClass7.cs" />
+    <Compile Include="TestClass\TestClass6.cs" />
     <Compile Include="TestClass\TestClass5.cs" />
     <Compile Include="TestClass\TestClass1.cs" />
     <Compile Include="TestClass\TestEnum.cs" />

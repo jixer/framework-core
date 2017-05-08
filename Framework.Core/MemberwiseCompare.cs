@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -12,6 +13,7 @@ namespace jixer.Framework.Core
         #region Private Members
         internal static IDictionary<Type, Func<object, object, bool>> _funcs;
         internal static MethodInfo _areEqualMethodInfo;
+        internal static MethodInfo _areArraysEqualMethodInfo;
         #endregion
 
         #region Constructors
@@ -19,6 +21,7 @@ namespace jixer.Framework.Core
         {
             _funcs = new Dictionary<Type, Func<object, object, bool>>();
             _areEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethods("AreEqual").Where(x => !x.IsPublic).Single();
+            _areArraysEqualMethodInfo = typeof(MemberwiseCompare).GetTypeInfo().GetDeclaredMethod("AreArraysEqual");
         }
         #endregion
 
@@ -88,7 +91,26 @@ namespace jixer.Framework.Core
             foreach (PropertyInfo property in type.GetTypeInfo().DeclaredProperties)
             {
                 Expression equals;
-                if (property.PropertyType.GetTypeInfo().IsClass && property.PropertyType.Name != "String")
+                if (property.PropertyType.GetTypeInfo().IsValueType || property.PropertyType.Name == "String")
+                {
+                    equals = Expression.Equal(
+                        Expression.Property(pCastThis, property),
+                        Expression.Property(pCastThat, property)
+                    );
+                }
+                else if (typeof(IEnumerable).GetTypeInfo().IsAssignableFrom(property.PropertyType.GetTypeInfo()))
+                {
+                    var leftArray = Expression.Property(pCastThis, property);
+                    var rightArray = Expression.Property(pCastThat, property);
+                    var arg = property.PropertyType.IsArray ? property.PropertyType.GetElementType() : property.PropertyType.GetTypeInfo().GenericTypeArguments[0];
+                    
+                    equals = Expression.Call(   _areArraysEqualMethodInfo,
+                                                Expression.Constant(arg),
+                                                Expression.Property(pCastThis, property),
+                                                Expression.Property(pCastThat, property));
+                }
+
+                else
                 {
                     var exprCall = Expression.Call(
                         _areEqualMethodInfo,
@@ -97,13 +119,7 @@ namespace jixer.Framework.Core
                         Expression.Property(pCastThat, property));
                     equals = Expression.Equal(exprCall, Expression.Constant(true));
                 }
-                else
-                {
-                    equals = Expression.Equal(
-                        Expression.Property(pCastThis, property),
-                        Expression.Property(pCastThat, property)
-                    );
-                }
+
 
                 if (last == null)
                     last = equals;
@@ -147,6 +163,36 @@ namespace jixer.Framework.Core
             Register(t);
             var func = _funcs[t];
             return func.Invoke(t1, t2);
+        }
+
+        protected static bool AreArraysEqual(Type t, IEnumerable t1, IEnumerable t2)
+        {
+            // initial quick checks
+            if (t1 == t2) return true; // accounts for nulls
+            if (t1 == null || t2 == null) return false;
+
+            var t1Enumerator = t1.GetEnumerator();
+            var t2Enumerator = t2.GetEnumerator();
+            bool t1CanMoveNext = true;
+            bool t2CanMoveNext = true;
+            while ((t1CanMoveNext = t1Enumerator.MoveNext()) & (t2CanMoveNext = t2Enumerator.MoveNext()))
+            {
+                bool areEqual = false;
+                if ((t.GetTypeInfo().IsValueType || t.GetTypeInfo().Name == "String"))
+                {
+                    areEqual = t1Enumerator.Current.Equals(t2Enumerator.Current);
+                }
+                else
+                {
+                    areEqual = AreEqual(t, t1Enumerator.Current, t2Enumerator.Current);
+                }
+
+                if (!areEqual) return false;
+            }
+
+            // if we got here then the array elements are the same
+            // this last check is to make sure that one array is not larger than the other
+            return t1CanMoveNext == false && t2CanMoveNext == false;
         }
         #endregion
     }
