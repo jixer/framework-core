@@ -1,4 +1,4 @@
-[Back to root of project](../)
+[Back to root of project](../../../)
 
 # MemberwiseCompare
 This class can be used to compare two different reference objects to determine equality amongst the primitive types in these complex types.
